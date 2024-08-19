@@ -7,7 +7,7 @@ const eventSchema = new mongoose.Schema({
   startingdate: { type: Date, required: true },
   enddate: { type: Date, required: true },
   maxpeoples: { type: Number, required: true },
-  attendees: { type: Number, default: 1 },
+  attendees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'user' }],
   rating: { type: [Number], default: [] },
 });
 
