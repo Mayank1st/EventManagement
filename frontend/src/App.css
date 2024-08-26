@@ -151,3 +151,90 @@
   height: 100%;
   object-fit: cover; /* Ensures the image covers the circle without stretching */
 }
+
+
+/* Organizer Dashboard Styles */
+
+/* Navbar */
+.organizer-navbar {
+    background-color: #004d00;
+    color: #FFFFFF;
+  }
+  
+  .organizer-navbar .nav-link {
+    color: #FFFFFF;
+  }
+  
+  /* Sidebar */
+  .organizer-sidebar {
+    background-color: #e6ffe6;
+    color: #004d00;
+  }
+  
+  /* Main Content */
+  .organizer-main-content {
+    background-color: #FFFFFF;
+    color: #333333;
+  }
+  
+  /* Profile Section */
+  .profile-img-div {
+    width: 100px;
+    height: 100px;
+    margin: auto;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #f0f0f0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .profile-img-div img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  /* Event Card */
+  .event-log-card {
+    width: 18rem !important;
+  }
+  
+  .event-log-card > img {
+    height: 20vh;
+    width: 20vw;
+  }
+  
+  /* Profile-user-table */
+  .custom-table {
+    width: 100%;
+    max-width: 800px;
+    border-collapse: collapse;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+  }
+  
+  .custom-table thead {
+    background-color: #333;
+    color: #fff;
+  }
+  
+  .custom-table th,
+  .custom-table td {
+    padding: 12px 15px;
+    text-align: left;
+  }
+  
+  .custom-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  .custom-table tbody tr:hover {
+    background-color: #f1f1f1;
+  }
+  
+  .custom-table th {
+    font-weight: bold;
+  }
+  

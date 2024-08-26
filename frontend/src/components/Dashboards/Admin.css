@@ -1,0 +1,85 @@
+.admin-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.navbar {
+  background-color: #008374; /* Deep green color */
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  align-items: center;
+}
+
+.navbar .nav-links a {
+  color: white;
+  margin: 0 10px;
+  text-decoration: none;
+}
+
+.navbar .profile-dropdown {
+  display: flex;
+  align-items: center;
+}
+
+.profile-img img {
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+}
+
+.admin-layout {
+  display: flex;
+  flex: 1;
+}
+
+.sidebar {
+  width: 200px;
+  background-color: #f4f4f4;
+  padding: 20px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-link {
+  padding: 10px;
+  text-decoration: none;
+  color: #333;
+  border-radius: 4px;
+}
+
+.sidebar-link:hover {
+  background-color: #e1e1e1;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+}
+
+.error-message {
+  color: red;
+}
+
+.manage-users-container {
+  padding: 20px;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table th, .users-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.users-table th {
+  background-color: #f4f4f4;
+}

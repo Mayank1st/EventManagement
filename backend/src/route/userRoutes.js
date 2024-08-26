@@ -4,12 +4,14 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const nodemailer = require('nodemailer');
 const userModel = require("../models/userModel");
 const eventModel = require("../models/eventModel");
 const verifyToken = require("../middlewares/authMiddleware");
 const verifyRoles = require("../middlewares/roleMiddleware");
 const mongoose = require("mongoose");
 const userRouter = express.Router();
+const cron = require('node-cron');
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -63,7 +65,6 @@ userRouter.post("/register", upload.single("photo"), async (req, res) => {
       });
     }
 
-    // Validate role
     const validRoles = ["Admin", "Organizer", "User"];
     if (!validRoles.includes(role)) {
       return res.status(400).json({
@@ -97,7 +98,6 @@ userRouter.post("/register", upload.single("photo"), async (req, res) => {
       });
     }
 
-    // JWT Web Tokens
     const token = jwt.sign(
       { id: newUser._id, roles: newUser.roles },
       process.env.JWT_SECRET_KEY,
@@ -144,7 +144,6 @@ userRouter.post("/login", async (req, res) => {
         .json({ status: "failed", message: "Invalid email or password" });
     }
 
-    // JWT Token
     const token = jwt.sign(
       { id: isUserExisting._id, roles: isUserExisting.roles },
       process.env.JWT_SECRET_KEY,
@@ -156,6 +155,8 @@ userRouter.post("/login", async (req, res) => {
       message: "Login Successful",
       token,
       userId: isUserExisting._id,
+      roles: isUserExisting.roles,
+      username: isUserExisting.username,
     });
   } catch (error) {
     console.error(error);
@@ -190,12 +191,10 @@ userRouter.patch(
         .json({ status: "success", message: "User disabled successfully" });
     } catch (error) {
       console.error("Error disabling user:", error);
-      res
-        .status(500)
-        .json({
-          status: "failed",
-          message: "Internal error, please try again later",
-        });
+      res.status(500).json({
+        status: "failed",
+        message: "Internal error, please try again later",
+      });
     }
   }
 );
@@ -225,146 +224,69 @@ userRouter.patch(
         .json({ status: "success", message: "User enabled successfully" });
     } catch (error) {
       console.error("Error enabling user:", error);
-      res
-        .status(500)
-        .json({
-          status: "failed",
-          message: "Internal error, please try again later",
-        });
+      res.status(500).json({
+        status: "failed",
+        message: "Internal error, please try again later",
+      });
     }
   }
 );
 
-// Fetch user profile
-userRouter.get("/profile", verifyToken, async (req, res) => {
+// User Profile Route
+userRouter.get("/user-profile", verifyToken, async (req, res) => {
   try {
     const user = await userModel
       .findById(req.user.id)
-      .select("username email photo roles isDisabled");
+      .select("username email photo roles");
 
-    if (!user) {
+    if (!user || user.roles[0] !== "User") {
       return res
-        .status(404)
-        .json({ status: "failed", message: "User not found" });
+        .status(403)
+        .json({ status: "failed", message: "Access denied" });
     }
+    res.status(200).json({ status: "success", user: user });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ status: "Failed", message: "Internal error occurred!" });
+  }
+});
 
-    res.status(200).json({
-      status: "success",
-      user: {
-        username: user.username,
-        email: user.email,
-        photo: user.photo,
-        roles: user.roles,
-        isDisabled: user.isDisabled,
-      },
+// Event Creation
+userRouter.post("/events", verifyToken, async (req, res) => {
+  const { title, location, maxpeoples, startingdate, enddate } = req.body;
+
+  try {
+    const newEvent = new eventModel({
+      title,
+      location,
+      maxpeoples,
+      startingdate,
+      enddate,
+      creator: req.user.id,
     });
+
+    const savedEvent = await newEvent.save();
+
+    // Emit event creation to all connected clients
+    req.io.emit('eventCreated', savedEvent);
+
+    res.status(201).json({ status: "success", data: savedEvent });
   } catch (error) {
-    console.error("Profile error:", error);
+    console.error(error);
     res
       .status(500)
-      .json({
-        status: "failed",
-        message: "Internal error, please try again later",
-      });
+      .json({ status: "Failed", message: "Internal error occurred!" });
   }
 });
 
-// Create Event
-userRouter.post(
-  "/createevent",
-  verifyToken,
-  verifyRoles("Organizer", "Admin"),
-  async (req, res) => {
-    const { title, location, maxpeoples, startingdate, enddate } = req.body;
-    const creator = req.user.id;
-
-    try {
-      if (!title || !location || !maxpeoples || !startingdate || !enddate) {
-        return res
-          .status(400)
-          .json({ status: "failed", message: "All fields are required" });
-      }
-
-      const newEvent = new eventModel({
-        title,
-        location,
-        maxpeoples,
-        startingdate,
-        enddate,
-        creator,
-        attendees: [creator], // Automatically add the creator as an attendee
-      });
-
-      await newEvent.save();
-      res.status(201).json({
-        status: "success",
-        message: "Event created successfully",
-        data: newEvent,
-      });
-    } catch (error) {
-      console.error("Error creating event:", error);
-      res
-        .status(500)
-        .json({
-          status: "failed",
-          message: "Internal error, please try again later",
-        });
-    }
-  }
-);
-
-// Fetch Events Created by Logged-In User
-userRouter.get("/myevents", verifyToken, async (req, res) => {
-  try {
-    const { id } = req.user;
-
-    const events = await eventModel.find({ creator: id });
-
-    if (!events) {
-      return res
-        .status(404)
-        .json({ status: "failed", message: "No events found for this user" });
-    }
-
-    res.status(200).json({ status: "success", events });
-  } catch (error) {
-    console.error("Error fetching user events:", error);
-    res
-      .status(500)
-      .json({
-        status: "failed",
-        message: "Internal error, please try again later",
-      });
-  }
-});
-
-// Fetch Top Events
-userRouter.get("/top-events", async (req, res) => {
-  try {
-    const events = await eventModel
-      .find()
-      .sort({ "attendees.length": -1 }) // Sort by number of attendees
-      .limit(5); // Limit to top 5 events
-
-    res.status(200).json(events);
-  } catch (error) {
-    console.error("Error fetching top events:", error);
-    res
-      .status(500)
-      .json({
-        status: "failed",
-        message: "Internal error, please try again later",
-      });
-  }
-});
-
-// Apply/Remove Event
-userRouter.patch("/applyevent/:id", verifyToken, async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
+// Join Event
+userRouter.post("/events/join/:eventId", verifyToken, async (req, res) => {
+  const { eventId } = req.params;
 
   try {
-    const event = await eventModel.findById(id);
+    const event = await eventModel.findById(eventId);
 
     if (!event) {
       return res
@@ -372,120 +294,89 @@ userRouter.patch("/applyevent/:id", verifyToken, async (req, res) => {
         .json({ status: "failed", message: "Event not found" });
     }
 
-    if (event.attendees.includes(userId)) {
+    if (event.attendees.includes(req.user.id)) {
       return res
         .status(400)
-        .json({ status: "failed", message: "Already applied to this event" });
+        .json({ status: "failed", message: "Already joined the event" });
     }
 
-    event.attendees.push(userId);
+    if (event.attendees.length >= event.maxpeoples) {
+      return res
+        .status(400)
+        .json({ status: "failed", message: "Event is full" });
+    }
+
+    event.attendees.push(req.user.id);
     await event.save();
 
-    res
-      .status(200)
-      .json({
-        status: "success",
-        message: "Applied to the event successfully",
-      });
+    // Emit event update to all connected clients
+    req.io.emit('eventUpdated', event);
+
+    res.status(200).json({ status: "success", message: "Joined the event" });
   } catch (error) {
-    console.error("Error applying to event:", error);
+    console.error(error);
     res
       .status(500)
-      .json({
-        status: "failed",
-        message: "Internal error, please try again later",
-      });
+      .json({ status: "Failed", message: "Internal error occurred!" });
   }
 });
 
-userRouter.delete("/removeevent/:id", verifyToken, async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
+// Event Update
+userRouter.put("/events/:eventId", verifyToken, async (req, res) => {
+  const { eventId } = req.params;
+  const { title, location, maxpeoples, startingdate, enddate } = req.body;
 
   try {
-    const event = await eventModel.findById(id);
+    const updatedEvent = await eventModel.findByIdAndUpdate(
+      eventId,
+      { title, location, maxpeoples, startingdate, enddate },
+      { new: true }
+    );
 
-    if (!event) {
+    if (!updatedEvent) {
       return res
         .status(404)
         .json({ status: "failed", message: "Event not found" });
     }
 
-    event.attendees = event.attendees.filter(
-      (attendee) => attendee.toString() !== userId.toString()
-    );
-    await event.save();
+    // Emit event update to all connected clients
+    req.io.emit('eventUpdated', updatedEvent);
 
-    res
-      .status(200)
-      .json({
-        status: "success",
-        message: "Removed from the event successfully",
-      });
+    res.status(200).json({ status: "success", data: updatedEvent });
   } catch (error) {
-    console.error("Error removing from event:", error);
+    console.error(error);
     res
       .status(500)
-      .json({
-        status: "failed",
-        message: "Internal error, please try again later",
-      });
+      .json({ status: "Failed", message: "Internal error occurred!" });
   }
 });
 
-// Update Event
-userRouter.put(
-  "/updateevent/:id",
-  verifyToken,
-  verifyRoles("Organizer", "Admin"),
-  async (req, res) => {
-    const { id } = req.params;
-    const { title, location, maxpeoples, startingdate, enddate } = req.body;
-    const creator = req.user.id;
+// Event Deletion
+userRouter.delete("/events/:eventId", verifyToken, async (req, res) => {
+  const { eventId } = req.params;
 
-    try {
-      const event = await eventModel.findById(id);
+  try {
+    const deletedEvent = await eventModel.findByIdAndDelete(eventId);
 
-      if (!event) {
-        return res
-          .status(404)
-          .json({ status: "failed", message: "Event not found" });
-      }
-
-      if (event.creator.toString() !== creator) {
-        return res
-          .status(403)
-          .json({
-            status: "failed",
-            message: "Not authorized to update this event",
-          });
-      }
-
-      event.title = title || event.title;
-      event.location = location || event.location;
-      event.maxpeoples = maxpeoples || event.maxpeoples;
-      event.startingdate = startingdate || event.startingdate;
-      event.enddate = enddate || event.enddate;
-
-      await event.save();
-
-      res
-        .status(200)
-        .json({
-          status: "success",
-          message: "Event updated successfully",
-          event,
-        });
-    } catch (error) {
-      console.error("Error updating event:", error);
-      res
-        .status(500)
-        .json({
-          status: "failed",
-          message: "Internal error, please try again later",
-        });
+    if (!deletedEvent) {
+      return res
+        .status(404)
+        .json({ status: "failed", message: "Event not found" });
     }
-  }
-);
 
-module.exports = userRouter;
+    // Emit event deletion to all connected clients
+    req.io.emit('eventDeleted', eventId);
+
+    res.status(200).json({ status: "success", message: "Event deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ status: "Failed", message: "Internal error occurred!" });
+  }
+});
+
+module.exports = (io) => {
+  userRouter.io = io;
+  return userRouter;
+};

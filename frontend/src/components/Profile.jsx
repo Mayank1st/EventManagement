@@ -16,7 +16,7 @@ function Profile() {
           throw new Error("User not logged in or token missing");
         }
 
-        const response = await axios.get("http://localhost:8081/user/profile", {
+        const response = await axios.get("https://eventmanagement-1-a7zk.onrender.com/user/profile", {
           headers: {
             Authorization: `Bearer ${localStorageData.token}`,
           },
@@ -72,7 +72,7 @@ function Profile() {
     try {
       const localStorageData = JSON.parse(localStorage.getItem("user"));
       const response = await axios.patch(
-        `http://localhost:8081/user/updateprofile/${profileData._id}`,
+        `https://eventmanagement-1-a7zk.onrender.com/user/updateprofile/${profileData._id}`,
         formData,
         {
           headers: {
@@ -114,7 +114,7 @@ function Profile() {
             <img
               src={
                 profileData?.photo
-                  ? `http://localhost:8081/${profileData.photo}`
+                  ? `https://eventmanagement-1-a7zk.onrender.com/${profileData.photo}`
                   : "https://www.svgrepo.com/show/397593/ninja-medium-skin-tone.svg"
               }
               className="card-img-top"

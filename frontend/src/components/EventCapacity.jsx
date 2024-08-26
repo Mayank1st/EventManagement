@@ -7,7 +7,7 @@ function EventCapacity() {
   useEffect(() => {
     const fetchEventCapacity = async () => {
       try {
-        const response = await axios.get("http://localhost:8081/user/event-capacity");
+        const response = await axios.get("https://eventmanagement-1-a7zk.onrender.com/user/event-capacity");
         setEvents(response.data);
       } catch (error) {
         console.error("Failed to fetch event capacity:", error);

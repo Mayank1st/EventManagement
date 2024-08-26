@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 function CreateEvent() {
   const [username, setUsername] = useState("");
   const [formInitialized, setFormInitialized] = useState(false);
-  const CreateEvent_URL = "http://localhost:8081/user/createevent";
+  const CreateEvent_URL = "https://eventmanagement-1-a7zk.onrender.com/user/createevent";
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,11 +33,16 @@ function CreateEvent() {
     enableReinitialize: true,
     onSubmit: async (values, actions) => {
       try {
-        // Extract token from localStorage
         const localStorageData = JSON.parse(localStorage.getItem("user"));
         const token = localStorageData ? localStorageData.token : null;
 
-        const response = await axios.post(CreateEvent_URL, values, {
+        // Include the username in the values being sent to the backend
+        const dataToSend = {
+          ...values,
+          username: localStorageData.username,
+        };
+
+        const response = await axios.post(CreateEvent_URL, dataToSend, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
@@ -48,7 +53,7 @@ function CreateEvent() {
 
         alert(response.data.message);
         actions.resetForm();
-        navigate("/eventlog");
+        navigate("/organizer-dashboard");
       } catch (error) {
         console.error("Event Creation failed:", error.response?.data || error.message);
       }

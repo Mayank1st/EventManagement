@@ -4,8 +4,10 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 function Login() {
-  const [errorMessage, setErrorMessage] = useState(""); 
-  const Login_URL = "http://localhost:8081/user/login";
+  const [errorMessage, setErrorMessage] = useState("");
+  const Login_URL = "https://eventmanagement-1-a7zk.onrender.com/user/login";
+  // const Login_URL = "http://localhost:8081/user/login";
+
   const navigate = useNavigate();
 
   const formik = useFormik({
@@ -20,14 +22,27 @@ function Login() {
         const userData = {
           email: values.email,
           token: response.data.token,
-          userId: response.data.userId, // Store the user ID from the response
+          userId: response.data.userId,
+          roles: response.data.roles,
+          username: response.data.username,
         };
+
+        console.log(userData);
 
         localStorage.setItem("user", JSON.stringify(userData));
         alert(response.data.message);
         action.resetForm();
         setErrorMessage("");
-        navigate("/profile");
+
+        // Navigate based on role
+        if (response.data.roles.includes("Admin")) {
+          navigate("/admin-dashboard");
+        } else if (response.data.roles.includes("Organizer")) {
+          navigate("/organizer-dashboard");
+        } else {
+          navigate("/user-dashboard");
+        }
+
         window.location.reload();
       } catch (error) {
         setErrorMessage(

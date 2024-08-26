@@ -23,7 +23,7 @@ function EventLog() {
     const fetchEvents = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8081/user/event-capacity"
+          "https://eventmanagement-1-a7zk.onrender.com/user/event-capacity"
         );
         setEvents(Array.isArray(response.data) ? response.data : []);
 
@@ -46,7 +46,7 @@ function EventLog() {
   useEffect(() => {
     const fetchCreators = async () => {
       try {
-        const response = await axios.get("http://localhost:8081/user/users");
+        const response = await axios.get("https://eventmanagement-1-a7zk.onrender.com/user/users");
         const creators = Array.isArray(response.data) ? response.data : [];
 
         const creatorMap = creators.reduce((map, user) => {
@@ -69,7 +69,7 @@ function EventLog() {
     const fetchTopEvents = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8081/user/top-events"
+          "https://eventmanagement-1-a7zk.onrender.com/user/top-events"
         );
         setTopEvents(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
@@ -86,7 +86,7 @@ function EventLog() {
         try {
           const user = JSON.parse(localStorage.getItem("user"));
           const response = await axios.get(
-            "http://localhost:8081/user/myevents",
+            "https://eventmanagement-1-a7zk.onrender.com/user/myevents",
             {
               headers: {
                 Authorization: `Bearer ${user.token}`,
@@ -133,7 +133,7 @@ function EventLog() {
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       const response = await axios.put(
-        `http://localhost:8081/user/updateevent/${editEvent._id}`,
+        `https://eventmanagement-1-a7zk.onrender.com/user/updateevent/${editEvent._id}`,
         formData,
         {
           headers: {

@@ -5,7 +5,9 @@ import { useNavigate } from "react-router-dom";
 
 function Register() {
   const [role, setRole] = useState("User"); // Default role
-  const Registration_URL = "http://localhost:8081/user/register";
+  const Registration_URL = "https://eventmanagement-1-a7zk.onrender.com/user/register";
+  // const Registration_URL = "http://localhost:8081/user/register";
+
   const navigate = useNavigate();
 
   const formik = useFormik({
@@ -80,12 +82,13 @@ function Register() {
               className="form-control"
               onChange={(e) => {
                 formik.setFieldValue("role", e.target.value);
-                setRole(e.target.value); // Update role state
+                setRole(e.target.value); 
               }}
               value={formik.values.role}
             >
               <option value="User">User</option>
               <option value="Organizer">Organizer</option>
+              <option value="Admin">Admin</option>
             </select>
           </div>
 

@@ -7,7 +7,7 @@ function TopEvents() {
   useEffect(() => {
     const fetchTopEvents = async () => {
       try {
-        const response = await axios.get("http://localhost:8081/user/top-events");
+        const response = await axios.get("https://eventmanagement-1-a7zk.onrender.com/user/top-events");
         setEvents(response.data);
       } catch (error) {
         console.error("Failed to fetch top events:", error);

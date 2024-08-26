@@ -12,6 +12,7 @@ const userModelSchema = Schema({
     default: ["User"],
   },
   isDisabled: { type: Boolean, default: false }, 
+  joinedEvents: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }]
 });
 
 const userModel = model("user", userModelSchema);
