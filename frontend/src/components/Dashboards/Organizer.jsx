@@ -21,43 +21,53 @@ function OrganizerDashboard() {
 
         // Fetch user profile
         const profileResponse = await axios.get(
-          `http://localhost:8081/user/organizer-profile`,
+          `https://eventmanagement-1-a7zk.onrender.com/user/user-profile`,
           {
             headers: {
               Authorization: `Bearer ${userData.token}`,
             },
           }
         );
+
+        // console.log("API response:", profileResponse.data);
 
         // Check if the response contains the expected data
         if (profileResponse.data && profileResponse.data.user) {
           const photoPath = profileResponse.data.user.photo.replace(/\\/, "/");
-          const imageUrl = `http://localhost:8081/${photoPath}`;
+          const imageUrl = `https://eventmanagement-1-a7zk.onrender.com/${photoPath}`;
 
           setProfileImage(imageUrl);
           setUsername(profileResponse.data.user.username);
+
+          // Check if the roles property is defined before using it
+          if (
+            profileResponse.data.user.roles &&
+            profileResponse.data.user.roles.includes("Organizer")
+          ) {
+            // Fetch events only for organizers
+            const eventsResponse = await axios.get(
+              `https://eventmanagement-1-a7zk.onrender.com/user/organizer-events`,
+              {
+                headers: {
+                  Authorization: `Bearer ${userData.token}`,
+                },
+              }
+            );
+
+            // Check if the response contains events
+            if (eventsResponse.data && eventsResponse.data.events) {
+              setEvents(eventsResponse.data.events);
+            } else {
+              throw new Error("Invalid events response data.");
+            }
+          }
         } else {
           throw new Error("Invalid profile response data.");
         }
-
-        // Fetch events
-        const eventsResponse = await axios.get(
-          `http://localhost:8081/user/organizer-events`,
-          {
-            headers: {
-              Authorization: `Bearer ${userData.token}`,
-            },
-          }
-        );
-
-        // Check if the response contains events
-        if (eventsResponse.data && eventsResponse.data.events) {
-          setEvents(eventsResponse.data.events);
-        } else {
-          throw new Error("Invalid events response data.");
-        }
       } catch (error) {
-        setError(`Error fetching Organizer profile or events: ${error.message}`);
+        setError(
+          `Error fetching Organizer profile or events: ${error.message}`
+        );
         console.error("Error fetching Organizer profile or events:", error);
       }
     };
@@ -225,46 +235,66 @@ function OrganizerDashboard() {
             />
           </div>
           <div style={styles.dropdownContent}>
-            <a href="/organizer/update-profile" style={styles.dropdownLink}>
-              Update Profile
-            </a>
-            <a href="/organizer/logout" style={styles.dropdownLink}>
+            <Link
+              to="/organizer/profile"
+              style={{ ...styles.dropdownLink, ...styles.dropdownLinkHover }}
+            >
+              Profile
+            </Link>
+            <Link
+              to="/organizer/settings"
+              style={{ ...styles.dropdownLink, ...styles.dropdownLinkHover }}
+            >
+              Settings
+            </Link>
+            <Link
+              to="/logout"
+              style={{ ...styles.dropdownLink, ...styles.dropdownLinkHover }}
+            >
               Logout
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
 
-      {/* Sidebar and Main Content */}
-      <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", flexGrow: 1 }}>
+        {/* Sidebar */}
         <aside style={styles.sidebar}>
-          <div>
-            <div style={styles.profileImgDiv}>
-              <img
-                src={profileImage || "/default-profile-image.jpg"}
-                alt="User"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </div>
+          <div style={styles.profileImgDiv}>
+            <img
+              src={profileImage || "/default-profile-image.jpg"}
+              alt="User"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </div>
+          <h3>{username}</h3>
+          <div style={{ position: "relative" }}>
             <button style={styles.dropdownBtn} onClick={toggleDropdown}>
-              Organizer Menu
+              Menu
             </button>
             <div style={styles.dropdownNavContent}>
-              <Link to="/organizer/manage-event" style={styles.dropdownLink}>
-                Manage Events
-              </Link>
-              <Link to="/create-event" style={styles.dropdownLink}>
-                Create Event
-              </Link>
+              <a href="/create-event" style={styles.dropdownLink}>
+               Create Events
+              </a>
+              <a href="/organizer/reports" style={styles.dropdownLink}>
+                Reports
+              </a>
+              <a href="/organizer/settings" style={styles.dropdownLink}>
+                Settings
+              </a>
+              <a href="/logout" style={styles.dropdownLink}>
+                Logout
+              </a>
             </div>
           </div>
         </aside>
 
         {/* Main Content */}
         <main style={styles.mainContent}>
-          <h1>Welcome, {username}</h1>
+          <h2>Organizer Dashboard</h2>
           {error && <p style={styles.errorMessage}>{error}</p>}
-          <Page events={events} />
+          <p>Manage your events and view reports here.</p>
+          <Page />
         </main>
       </div>
     </div>

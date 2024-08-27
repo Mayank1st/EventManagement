@@ -15,6 +15,6 @@ const userModelSchema = Schema({
   joinedEvents: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }]
 });
 
-const userModel = model("user", userModelSchema);
+const userModel = model("User", userModelSchema);
 
 module.exports = userModel;

@@ -10,6 +10,5 @@ export const store = configureStore({
     getDefaultMiddleware().concat(authApi.middleware),
 })
 
-tupListeners` docs - takes an optional callback as the 2nd arg for customization// optional, but required for refetchOnFocus/refetchOnReconnect behaviors
-// see `se
+
 setupListeners(store.dispatch)

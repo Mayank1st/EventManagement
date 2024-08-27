@@ -19,7 +19,7 @@ function UserDashboard() {
         }
 
         const response = await axios.get(
-          `http://localhost:8081/user/user-profile`,
+          `https://eventmanagement-1-a7zk.onrender.com/user/user-profile`,
           {
             headers: {
               Authorization: `Bearer ${userData.token}`,
@@ -28,7 +28,7 @@ function UserDashboard() {
         );
 
         const photoPath = response.data.user.photo.replace(/\\/, "/");
-        const imageUrl = `http://localhost:8081/${photoPath}`;
+        const imageUrl = `https://eventmanagement-1-a7zk.onrender.com/${photoPath}`;
 
         setProfileImage(imageUrl);
         setUsername(response.data.user.username);
@@ -226,12 +226,13 @@ function UserDashboard() {
               User Menu
             </button>
             <div style={styles.dropdownNavContent}>
-              <Link to="/user/manage-event" style={styles.dropdownLink}>
+              {/* Remove the Manage Events and Create Event options */}
+              {/* <Link to="/user/manage-event" style={styles.dropdownLink}>
                 Manage Events
               </Link>
               <Link to="/create-event" style={styles.dropdownLink}>
                 Create Event
-              </Link>
+              </Link> */}
             </div>
           </div>
         </aside>

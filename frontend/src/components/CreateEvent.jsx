@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 function CreateEvent() {
   const [username, setUsername] = useState("");
   const [formInitialized, setFormInitialized] = useState(false);
-  const CreateEvent_URL = "https://eventmanagement-1-a7zk.onrender.com/user/createevent";
+  const CreateEvent_URL = "https://eventmanagement-1-a7zk.onrender.com/user/events";
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,12 +23,13 @@ function CreateEvent() {
 
   const formik = useFormik({
     initialValues: {
-      creator: username,
+      creator: username, // This can be removed if `creator` is set by backend
       title: "",
       location: "",
       startingdate: "",
       enddate: "",
       maxpeoples: "",
+      username: username, // Ensure this is included
     },
     enableReinitialize: true,
     onSubmit: async (values, actions) => {
@@ -37,12 +38,7 @@ function CreateEvent() {
         const token = localStorageData ? localStorageData.token : null;
 
         // Include the username in the values being sent to the backend
-        const dataToSend = {
-          ...values,
-          username: localStorageData.username,
-        };
-
-        const response = await axios.post(CreateEvent_URL, dataToSend, {
+        const response = await axios.post(CreateEvent_URL, values, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
@@ -55,7 +51,10 @@ function CreateEvent() {
         actions.resetForm();
         navigate("/organizer-dashboard");
       } catch (error) {
-        console.error("Event Creation failed:", error.response?.data || error.message);
+        console.error(
+          "Event Creation failed:",
+          error.response?.data || error.message
+        );
       }
     },
   });
@@ -92,7 +91,11 @@ function CreateEvent() {
         </h2>
         <form onSubmit={formik.handleSubmit}>
           <div className="form-group mb-3">
-            <label htmlFor="creator" className="form-label" style={{ color: "lightSkyBlue" }}>
+            <label
+              htmlFor="creator"
+              className="form-label"
+              style={{ color: "lightSkyBlue" }}
+            >
               Creator
             </label>
             <input
@@ -110,7 +113,11 @@ function CreateEvent() {
             />
           </div>
           <div className="form-group mb-3">
-            <label htmlFor="title" className="form-label" style={{ color: "lightSkyBlue" }}>
+            <label
+              htmlFor="title"
+              className="form-label"
+              style={{ color: "lightSkyBlue" }}
+            >
               Event Title
             </label>
             <input
@@ -129,7 +136,11 @@ function CreateEvent() {
             />
           </div>
           <div className="form-group mb-3">
-            <label htmlFor="location" className="form-label" style={{ color: "lightSkyBlue" }}>
+            <label
+              htmlFor="location"
+              className="form-label"
+              style={{ color: "lightSkyBlue" }}
+            >
               Location
             </label>
             <input
@@ -148,7 +159,11 @@ function CreateEvent() {
             />
           </div>
           <div className="form-group mb-4">
-            <label htmlFor="startingdate" className="form-label" style={{ color: "lightSkyBlue" }}>
+            <label
+              htmlFor="startingdate"
+              className="form-label"
+              style={{ color: "lightSkyBlue" }}
+            >
               Starting Date
             </label>
             <input
@@ -167,7 +182,11 @@ function CreateEvent() {
             />
           </div>
           <div className="form-group mb-4">
-            <label htmlFor="enddate" className="form-label" style={{ color: "lightSkyBlue" }}>
+            <label
+              htmlFor="enddate"
+              className="form-label"
+              style={{ color: "lightSkyBlue" }}
+            >
               End Date
             </label>
             <input
@@ -186,7 +205,11 @@ function CreateEvent() {
             />
           </div>
           <div className="form-group mb-4">
-            <label htmlFor="maxpeoples" className="form-label" style={{ color: "lightSkyBlue" }}>
+            <label
+              htmlFor="maxpeoples"
+              className="form-label"
+              style={{ color: "lightSkyBlue" }}
+            >
               Maximum Number of Participants
             </label>
             <input

@@ -32,6 +32,13 @@ app.use(cors(corsOptions));
 // Middleware to serve static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Middleware to attach io to req
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+
 // User Route
 app.use("/user", userRouter(io));
 

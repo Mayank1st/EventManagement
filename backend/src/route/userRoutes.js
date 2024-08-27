@@ -4,14 +4,14 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
 const userModel = require("../models/userModel");
 const eventModel = require("../models/eventModel");
 const verifyToken = require("../middlewares/authMiddleware");
 const verifyRoles = require("../middlewares/roleMiddleware");
 const mongoose = require("mongoose");
 const userRouter = express.Router();
-const cron = require('node-cron');
+const cron = require("node-cron");
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -44,6 +44,15 @@ const upload = multer({
       cb("Error: Images Only!");
     }
   },
+});
+
+// Set up Nodemailer transport
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  }
 });
 
 // User Registration
@@ -239,12 +248,29 @@ userRouter.get("/user-profile", verifyToken, async (req, res) => {
       .findById(req.user.id)
       .select("username email photo roles");
 
-    if (!user || user.roles[0] !== "User") {
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: "failed", message: "User not found" });
+    }
+
+    // Handle different roles
+    if (user.roles.includes("Organizer")) {
+      // Additional organizer-specific data can be fetched and returned here
+      const organizerData = {
+        username: user.username,
+        photo: user.photo,
+        // You can include other organizer-specific data here
+      };
+      return res.status(200).json({ status: "success", user: organizerData });
+    } else if (user.roles.includes("User")) {
+      // Regular user response
+      return res.status(200).json({ status: "success", user: user });
+    } else {
       return res
         .status(403)
         .json({ status: "failed", message: "Access denied" });
     }
-    res.status(200).json({ status: "success", user: user });
   } catch (error) {
     console.error(error);
     res
@@ -253,9 +279,11 @@ userRouter.get("/user-profile", verifyToken, async (req, res) => {
   }
 });
 
+
+
 // Event Creation
 userRouter.post("/events", verifyToken, async (req, res) => {
-  const { title, location, maxpeoples, startingdate, enddate } = req.body;
+  const { title, location, maxpeoples, startingdate, enddate, username } = req.body;
 
   try {
     const newEvent = new eventModel({
@@ -265,12 +293,13 @@ userRouter.post("/events", verifyToken, async (req, res) => {
       startingdate,
       enddate,
       creator: req.user.id,
+      username, 
     });
 
     const savedEvent = await newEvent.save();
 
     // Emit event creation to all connected clients
-    req.io.emit('eventCreated', savedEvent);
+    req.io.emit("eventCreated", savedEvent);
 
     res.status(201).json({ status: "success", data: savedEvent });
   } catch (error) {
@@ -281,47 +310,44 @@ userRouter.post("/events", verifyToken, async (req, res) => {
   }
 });
 
-// Join Event
-userRouter.post("/events/join/:eventId", verifyToken, async (req, res) => {
-  const { eventId } = req.params;
 
+// All events
+userRouter.get("/events-log", verifyToken, async (req, res) => {
   try {
-    const event = await eventModel.findById(eventId);
+    const events = await eventModel.find();
 
-    if (!event) {
-      return res
-        .status(404)
-        .json({ status: "failed", message: "Event not found" });
-    }
+    console.log("Fetched Events:", events);
 
-    if (event.attendees.includes(req.user.id)) {
-      return res
-        .status(400)
-        .json({ status: "failed", message: "Already joined the event" });
-    }
-
-    if (event.attendees.length >= event.maxpeoples) {
-      return res
-        .status(400)
-        .json({ status: "failed", message: "Event is full" });
-    }
-
-    event.attendees.push(req.user.id);
-    await event.save();
-
-    // Emit event update to all connected clients
-    req.io.emit('eventUpdated', event);
-
-    res.status(200).json({ status: "success", message: "Joined the event" });
+    res.status(200).json({ status: "success", data: events });
   } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ status: "Failed", message: "Internal error occurred!" });
+    console.error("Error fetching events:", error);
+    res.status(500).json({ status: "Failed", message: "Internal error occurred!" });
   }
 });
 
-// Event Update
+
+// Get all events created by the organizer (user)
+userRouter.get("/organizer-events", verifyToken, async (req, res) => {
+  try {
+    const { username } = req.query;
+
+    // Find all events where the 'username' matches the 'creator' field
+    const events = await eventModel.find({ username });
+
+    if (events.length === 0) {
+      return res.status(404).json({ status: "Failed", message: "No events found for this user." });
+    }
+
+    res.status(200).json({ status: "success", events });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "Failed", message: "Internal error occurred!" });
+  }
+});
+
+
+
+// Update Event
 userRouter.put("/events/:eventId", verifyToken, async (req, res) => {
   const { eventId } = req.params;
   const { title, location, maxpeoples, startingdate, enddate } = req.body;
@@ -339,8 +365,41 @@ userRouter.put("/events/:eventId", verifyToken, async (req, res) => {
         .json({ status: "failed", message: "Event not found" });
     }
 
+    // Notify all attendees about the event update
+    const attendees = await userModel.find({ _id: { $in: updatedEvent.attendees } });
+    const emailAddresses = attendees.map(attendee => attendee.email);
+
+    emailAddresses.forEach(email => {
+      const mailOptions = {
+        from: process.env.GMAIL_USER,
+        to: email,
+        subject: 'Event Updated: ' + updatedEvent.title,
+        text: `
+          Hello,
+
+          The event "${updatedEvent.title}" has been updated. Here are the new details:
+
+          Location: ${updatedEvent.location}
+          Max People: ${updatedEvent.maxpeoples}
+          Starting Date: ${new Date(updatedEvent.startingdate).toLocaleString()}
+          End Date: ${new Date(updatedEvent.enddate).toLocaleString()}
+
+          Best regards,
+          Event Management Team
+        `
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending update email:", error);
+        } else {
+          console.log("Update email sent:", info.response);
+        }
+      });
+    });
+
     // Emit event update to all connected clients
-    req.io.emit('eventUpdated', updatedEvent);
+    req.io.emit("eventUpdated", updatedEvent);
 
     res.status(200).json({ status: "success", data: updatedEvent });
   } catch (error) {
@@ -351,28 +410,186 @@ userRouter.put("/events/:eventId", verifyToken, async (req, res) => {
   }
 });
 
-// Event Deletion
-userRouter.delete("/events/:eventId", verifyToken, async (req, res) => {
+
+
+
+// Join Event
+userRouter.post("/events/:eventId/join", verifyToken, async (req, res) => {
   const { eventId } = req.params;
+  const userId = req.user.id;
 
   try {
-    const deletedEvent = await eventModel.findByIdAndDelete(eventId);
+    const event = await eventModel.findById(eventId);
 
-    if (!deletedEvent) {
+    if (!event) {
       return res
         .status(404)
         .json({ status: "failed", message: "Event not found" });
     }
 
-    // Emit event deletion to all connected clients
-    req.io.emit('eventDeleted', eventId);
+    if (event.attendees.includes(userId)) {
+      return res
+        .status(400)
+        .json({ status: "failed", message: "Already joined" });
+    }
 
-    res.status(200).json({ status: "success", message: "Event deleted successfully" });
+    if (event.attendees.length >= event.maxpeoples) {
+      return res
+        .status(400)
+        .json({ status: "failed", message: "Event is full" });
+    }
+
+    event.attendees.push(userId);
+    await event.save();
+
+    // Emit event join to all connected clients
+    req.io.emit("eventJoined", { eventId, userId });
+
+    res.status(200).json({ status: "success", message: "Joined the event" });
+  } catch (error) {
+    console.error("Error joining event:", error);
+    res
+      .status(500)
+      .json({ status: "Failed", message: "Internal error occurred!" });
+  }
+});
+
+
+
+// Leave Event
+userRouter.post("/events/:eventId/leave", verifyToken, async (req, res) => {
+  const { eventId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const event = await eventModel.findById(eventId);
+
+    if (!event) {
+      return res
+        .status(404)
+        .json({ status: "failed", message: "Event not found" });
+    }
+
+    if (!event.attendees.includes(userId)) {
+      return res
+        .status(400)
+        .json({ status: "failed", message: "Not joined" });
+    }
+
+    event.attendees = event.attendees.filter(
+      (attendee) => attendee.toString() !== userId
+    );
+    await event.save();
+
+    // Emit event leave to all connected clients
+    req.io.emit("eventLeft", { eventId, userId });
+
+    res.status(200).json({ status: "success", message: "Left the event" });
   } catch (error) {
     console.error(error);
     res
       .status(500)
       .json({ status: "Failed", message: "Internal error occurred!" });
+  }
+});
+
+// Cron job for sending reminders 24 hours before an event
+cron.schedule('0 9 * * *', async () => {  // Runs every day at 9:00 AM
+  try {
+    const now = new Date();
+    const reminderDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+    const upcomingEvents = await eventModel.find({
+      startingdate: { $lte: reminderDate },
+      startingdate: { $gt: now }
+    });
+
+    upcomingEvents.forEach(async (event) => {
+      const attendees = await userModel.find({ _id: { $in: event.attendees } });
+      const emailAddresses = attendees.map(attendee => attendee.email);
+
+      emailAddresses.forEach(email => {
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: 'Event Reminder: ' + event.title,
+          text: `
+            Hello,
+
+            This is a reminder that the event "${event.title}" will start tomorrow. Here are the details:
+
+            Location: ${event.location}
+            Max People: ${event.maxpeoples}
+            Starting Date: ${new Date(event.startingdate).toLocaleString()}
+            End Date: ${new Date(event.enddate).toLocaleString()}
+
+            Best regards,
+            Event Management Team
+          `
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending reminder email:", error);
+          } else {
+            console.log("Reminder email sent:", info.response);
+          }
+        });
+      });
+    });
+  } catch (error) {
+    console.error("Error in reminder cron job:", error);
+  }
+});
+
+// Cron job for sending feedback requests 24 hours after an event ends
+cron.schedule('0 9 * * *', async () => {  // Runs every day at 9:00 AM
+  try {
+    const now = new Date();
+    const feedbackDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
+
+    const endedEvents = await eventModel.find({
+      enddate: { $lte: feedbackDate }
+    });
+
+    endedEvents.forEach(async (event) => {
+      const attendees = await userModel.find({ _id: { $in: event.attendees } });
+      const emailAddresses = attendees.map(attendee => attendee.email);
+
+      emailAddresses.forEach(email => {
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: 'Feedback Request: ' + event.title,
+          text: `
+            Hello,
+
+            We hope you enjoyed the event "${event.title}". We would appreciate it if you could take a moment to provide your feedback.
+
+            Event Details:
+            Location: ${event.location}
+            Max People: ${event.maxpeoples}
+            Starting Date: ${new Date(event.startingdate).toLocaleString()}
+            End Date: ${new Date(event.enddate).toLocaleString()}
+
+            Please reply to this email with your feedback.
+
+            Best regards,
+            Event Management Team
+          `
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending feedback email:", error);
+          } else {
+            console.log("Feedback email sent:", info.response);
+          }
+        });
+      });
+    });
+  } catch (error) {
+    console.error("Error in feedback cron job:", error);
   }
 });
 

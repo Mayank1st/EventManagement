@@ -19,7 +19,7 @@ function AdminDashboard() {
 
         // Fetch user profile
         const profileResponse = await axios.get(
-          `http://localhost:8081/user/admin-profile`,
+          `https://eventmanagement-1-a7zk.onrender.com/user/admin-profile`,
           {
             headers: {
               Authorization: `Bearer ${userData.token}`,
@@ -29,7 +29,7 @@ function AdminDashboard() {
 
         if (profileResponse.data && profileResponse.data.user) {
           const photoPath = profileResponse.data.user.photo.replace(/\\/, "/");
-          const imageUrl = `http://localhost:8081/${photoPath}`;
+          const imageUrl = `https://eventmanagement-1-a7zk.onrender.com/${photoPath}`;
 
           setProfileImage(imageUrl);
           setUsername(profileResponse.data.user.username);
@@ -39,7 +39,7 @@ function AdminDashboard() {
 
         // Fetch events
         const eventsResponse = await axios.get(
-          `http://localhost:8081/user/admin-events`,
+          `https://eventmanagement-1-a7zk.onrender.com/user/admin-events`,
           {
             headers: {
               Authorization: `Bearer ${userData.token}`,
